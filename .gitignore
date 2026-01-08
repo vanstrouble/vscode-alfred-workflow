@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# Alfred Workflow
+*.alfredworkflow
+build/
+dist/
+*.pyc
+__pycache__/
+.cache/
+.python-version
+
+# Node.js (if used in workflow)
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Python
+venv/
+env/
+.env
+*.egg-info/
+.pytest_cache/
+
+# Temporary files
+*.tmp
+*.log
+.temp/
