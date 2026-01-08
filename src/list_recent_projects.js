@@ -61,6 +61,36 @@ function getDirname(path) {
 }
 
 /**
+ * Gets git branches for multiple paths in parallel (much faster)
+ * @param {string[]} paths - Array of directory paths
+ * @returns {Object} Map of path -> branch name
+ */
+function getGitBranchesParallel(paths) {
+    if (paths.length === 0) return {};
+
+    // Create a script that outputs "path:branch" for each repo
+    const script = paths.map(p =>
+        `(cd "${p}" 2>/dev/null && echo "${p}:$(git rev-parse --abbrev-ref HEAD 2>/dev/null)")`
+    ).join(" & ");
+
+    const result = runShell(`{ ${script}; wait; } 2>/dev/null`);
+    if (!result) return {};
+
+    const branches = {};
+    result.trim().split("\n").forEach(line => {
+        const colonIndex = line.lastIndexOf(":");
+        if (colonIndex > 0) {
+            const path = line.substring(0, colonIndex);
+            const branch = line.substring(colonIndex + 1);
+            if (branch && branch !== "HEAD") {
+                branches[path] = branch;
+            }
+        }
+    });
+    return branches;
+}
+
+/**
  * Finds VS Code database path
  */
 function findVSCodeDB() {
@@ -131,64 +161,80 @@ function extractEntryInfo(entry) {
 
 /**
  * Parses a single entry into Alfred item format
+ * @param {Object} entry - Entry object
+ * @param {Object} branchMap - Map of path -> branch name
  */
-function parseEntry(entry) {
-	const info = extractEntryInfo(entry);
-	if (!info || !fileExists(info.path)) return null;
+function parseEntry(entry, branchMap = {}) {
+    const info = extractEntryInfo(entry);
+    if (!info || !fileExists(info.path)) return null;
 
-	const { path, type, name } = info;
-	const prettyPath = path.replace(HOME, "~");
+    const { path, type, name } = info;
+    const prettyPath = path.replace(HOME, "~");
+    const dirPath = getDirname(prettyPath);
 
-	return {
-		uid: path,
-		title: name,
-		subtitle: getDirname(prettyPath),
-		arg: path,
-		autocomplete: name,
-		match: `${name} ${path}`,
-		type: "file",
-		icon: type === "workspace"
-			? { path: "workspace.png" }
-			: { type: "fileicon", path: path },
-	};
+    // Get git branch from pre-fetched map (only for folders)
+    const branch = type === "folder" ? branchMap[path] : null;
+    const subtitle = branch ? `${dirPath} • ${branch}` : dirPath;
+
+    return {
+        uid: path,
+        title: name,
+        subtitle: subtitle,
+        arg: path,
+        autocomplete: name,
+        match: `${name} ${path}`,
+        type: "file",
+        icon: type === "workspace"
+            ? { path: "workspace.png" }
+            : { type: "fileicon", path: path },
+    };
 }
 
 /**
  * Main entry point for Alfred Script Filter
  */
 function run() {
-	const vsCode = findVSCodeDB();
+    const vsCode = findVSCodeDB();
 
-	if (!vsCode) {
-		return JSON.stringify({
-			items: [{
-				title: "VS Code not found",
-				subtitle: "Could not locate VS Code database",
-				valid: false,
-				icon: { path: "icon.png" },
-			}],
-		});
-	}
+    if (!vsCode) {
+        return JSON.stringify({
+            items: [{
+                title: "VS Code not found",
+                subtitle: "Could not locate VS Code database",
+                valid: false,
+                icon: { path: "icon.png" },
+            }],
+        });
+    }
 
-	const entries = getRecentEntries(vsCode.dbPath);
+    const entries = getRecentEntries(vsCode.dbPath);
 
-	if (!entries || entries.length === 0) {
-		return JSON.stringify({
-			items: [{
-				title: "No recent projects",
-				subtitle: "Open some projects in VS Code first",
-				valid: false,
-				icon: { path: "icon.png" },
-			}],
-		});
-	}
+    if (!entries || entries.length === 0) {
+        return JSON.stringify({
+            items: [{
+                title: "No recent projects",
+                subtitle: "Open some projects in VS Code first",
+                valid: false,
+                icon: { path: "icon.png" },
+            }],
+        });
+    }
 
-	const items = entries
-		.map(parseEntry)
-		.filter((item) => item !== null);
+    // Extract folder paths for parallel git branch fetching
+    const folderPaths = entries
+        .map(extractEntryInfo)
+        .filter(info => info && info.type === "folder" && fileExists(info.path))
+        .map(info => info.path);
 
-	return JSON.stringify({
-		cache: { seconds: 5, loosereload: true },
-		items,
-	});
+    // Fetch all git branches in parallel (single shell call)
+    const branchMap = getGitBranchesParallel(folderPaths);
+
+    const items = entries
+        .map(entry => parseEntry(entry, branchMap))
+        .filter((item) => item !== null);
+
+    return JSON.stringify({
+        cache: { seconds: 5, loosereload: true },
+        items,
+    });
 }
