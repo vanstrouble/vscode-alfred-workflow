@@ -1,0 +1,139 @@
+ObjC.import("Foundation");
+
+const app = Application.currentApplication();
+app.includeStandardAdditions = true;
+
+const MAX_RESULTS = 20;
+const API_URL = "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery?api-version=3.0-preview.1";
+const MARKETPLACE_URL = "https://marketplace.visualstudio.com/items?itemName=";
+const TEMP_FILE = "/tmp/vscode_ext_query.json";
+const DEFAULT_ICON = "icon.png";
+
+// API Flags (combined for performance)
+const API_FLAGS = 0x2 | 0x4 | 0x10 | 0x20 | 0x80 | 0x100 | 0x200; // Files, Categories, VersionProps, ExcludeNonValidated, AssetUri, Statistics, LatestOnly
+
+/**
+ * Executes a shell command
+ */
+function runShell(command) {
+	try {
+		return app.doShellScript(command);
+	} catch (e) {
+		return null;
+	}
+}
+
+/**
+ * Writes content to a file
+ */
+function writeFile(path, content) {
+	$(content).writeToFileAtomicallyEncodingError(path, true, $.NSUTF8StringEncoding, null);
+}
+
+/**
+ * Formats number compactly (1.2K, 3.4M)
+ */
+function compactNumber(num) {
+	if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, "") + "M";
+	if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, "") + "K";
+	return String(num);
+}
+
+/**
+ * Fetches extensions from VS Code Marketplace
+ */
+function fetchExtensions(searchText) {
+	const body = JSON.stringify({
+		filters: [{
+			criteria: [
+				{ filterType: 8, value: "Microsoft.VisualStudio.Code" },
+				{ filterType: 10, value: searchText },
+				{ filterType: 12, value: "4096" },
+			],
+			pageNumber: 1,
+			pageSize: MAX_RESULTS,
+			sortBy: 0,
+			sortOrder: 0,
+		}],
+		assetTypes: [],
+		flags: API_FLAGS,
+	});
+
+	writeFile(TEMP_FILE, body);
+
+	const result = runShell(
+		`curl -s -X POST '${API_URL}' -H 'Content-Type: application/json' --compressed -d @${TEMP_FILE} --max-time 8`
+	);
+
+	if (!result) return [];
+
+	try {
+		const data = JSON.parse(result);
+		return data.results?.[0]?.extensions || [];
+	} catch (e) {
+		return [];
+	}
+}
+
+/**
+ * Parses extension to Alfred item
+ */
+function parseExtension(ext) {
+	const id = `${ext.publisher.publisherName}.${ext.extensionName}`;
+	const stats = ext.statistics?.find(s => s.statisticName === "install");
+	const version = ext.versions?.[0]?.version || "";
+
+	const subtitle = [
+		ext.publisher.displayName,
+		stats ? `↓ ${compactNumber(stats.value)}` : null,
+		version ? `v${version}` : null,
+	].filter(Boolean).join(" • ");
+
+	return {
+		uid: ext.extensionId,
+		title: ext.displayName,
+		subtitle,
+		arg: id,
+		autocomplete: ext.displayName,
+		match: `${ext.displayName} ${id} ${ext.shortDescription || ""}`,
+		text: { copy: id, largetype: ext.shortDescription || ext.displayName },
+		quicklookurl: MARKETPLACE_URL + id,
+		icon: { path: DEFAULT_ICON },
+		mods: {
+			cmd: { subtitle: `Open in browser`, arg: MARKETPLACE_URL + id },
+		},
+	};
+}
+
+/**
+ * Creates a simple Alfred item
+ */
+function simpleItem(title, subtitle, valid = false) {
+	return { title, subtitle, valid, icon: { path: DEFAULT_ICON } };
+}
+
+/**
+ * Main entry point
+ */
+function run(argv) {
+	const query = argv?.[0]?.trim() || "";
+
+	if (!query) {
+		return JSON.stringify({
+			items: [simpleItem("Search VS Code Extensions", "Type to search the Marketplace")],
+		});
+	}
+
+	const extensions = fetchExtensions(query);
+
+	if (!extensions.length) {
+		return JSON.stringify({
+			items: [simpleItem("No extensions found", `No results for "${query}"`)],
+		});
+	}
+
+	return JSON.stringify({
+		cache: { seconds: 60, loosereload: true },
+		items: extensions.map(parseExtension),
+	});
+}
