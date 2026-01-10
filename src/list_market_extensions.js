@@ -6,7 +6,6 @@ app.includeStandardAdditions = true;
 const MAX_RESULTS = 20;
 const API_URL = "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery?api-version=3.0-preview.1";
 const MARKETPLACE_URL = "https://marketplace.visualstudio.com/items?itemName=";
-const TEMP_FILE = "/tmp/vscode_ext_query.json";
 const DEFAULT_ICON = "icon.png";
 
 // API Flags (combined for performance)
@@ -21,13 +20,6 @@ function runShell(command) {
 	} catch (e) {
 		return null;
 	}
-}
-
-/**
- * Writes content to a file
- */
-function writeFile(path, content) {
-	$(content).writeToFileAtomicallyEncodingError(path, true, $.NSUTF8StringEncoding, null);
 }
 
 /**
@@ -59,11 +51,8 @@ function fetchExtensions(searchText) {
 		flags: API_FLAGS,
 	});
 
-	writeFile(TEMP_FILE, body);
-
-	const result = runShell(
-		`curl -s -X POST '${API_URL}' -H 'Content-Type: application/json' --compressed -d @${TEMP_FILE} --max-time 8`
-	);
+	const command = `curl -s -X POST '${API_URL}' -H 'Content-Type: application/json' --compressed -d '${body}' --max-time 8`;
+	const result = runShell(command);
 
 	if (!result) return [];
 
