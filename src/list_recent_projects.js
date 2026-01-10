@@ -187,6 +187,18 @@ function parseEntry(entry, branchMap = {}) {
         icon: type === "workspace"
             ? { path: "workspace.png" }
             : { type: "fileicon", path: path },
+        mods: {
+            ctrl: {
+                subtitle: "⌃ Remove from recent projects",
+                arg: path,
+                variables: { action: 0 },
+            },
+            "ctrl+shift": {
+                subtitle: "⌃⇧ Remove all recent projects",
+                arg: "REMOVE_ALL",
+                variables: { action: 1 },
+            },
+        },
     };
 }
 
