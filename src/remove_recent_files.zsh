@@ -37,9 +37,11 @@ SET value = (
             (SELECT value FROM ItemTable WHERE key = 'history.recentlyOpenedPathsList'),
             '$.entries'
         )
-        WHERE JSON_EXTRACT(value, '$.folderUri') != 'file://${path_to_remove}'
-          AND JSON_EXTRACT(value, '$.workspace.configPath') != 'file://${path_to_remove}'
-          AND JSON_EXTRACT(value, '$.fileUri') != 'file://${path_to_remove}'
+        WHERE COALESCE(
+            JSON_EXTRACT(value, '\$.folderUri'),
+            JSON_EXTRACT(value, '\$.workspace.configPath'),
+            JSON_EXTRACT(value, '\$.fileUri')
+        ) != 'file://${path_to_remove}'
     )
 )
 WHERE key = 'history.recentlyOpenedPathsList';
@@ -51,4 +53,4 @@ EOF
         ;;
 esac
 
-echo "✓ Updated recent projects"
+echo "Updated recent projects"

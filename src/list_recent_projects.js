@@ -191,12 +191,12 @@ function parseEntry(entry, branchMap = {}) {
             ctrl: {
                 subtitle: "⌃ Remove from recent projects",
                 arg: path,
-                variables: { action: 0 },
+                variables: { action: "0" },
             },
             "ctrl+shift": {
                 subtitle: "⌃⇧ Remove all recent projects",
                 arg: "REMOVE_ALL",
-                variables: { action: 1 },
+                variables: { action: "1" },
             },
         },
     };
