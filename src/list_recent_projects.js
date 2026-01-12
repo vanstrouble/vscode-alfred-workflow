@@ -5,6 +5,13 @@ const HOME = ObjC.unwrap(
 	$.NSProcessInfo.processInfo.environment.objectForKey("HOME")
 );
 
+// VS Code variants configuration (DRY principle)
+const VS_CODE_VARIANTS = [
+	["Code", `${HOME}/Library/Application Support/Code/User/globalStorage/state.vscdb`],
+	["Code - Insiders", `${HOME}/Library/Application Support/Code - Insiders/User/globalStorage/state.vscdb`],
+	["VSCodium", `${HOME}/Library/Application Support/VSCodium/User/globalStorage/state.vscdb`],
+];
+
 /**
  * Executes a shell command using NSTask (faster than doShellScript)
  * @param {string} command - Command to execute
@@ -91,16 +98,11 @@ function getGitBranchesParallel(paths) {
 }
 
 /**
- * Finds VS Code database path
+ * Finds VS Code database path.
+ * Optimized: Uses centralized VS_CODE_VARIANTS constant.
  */
 function findVSCodeDB() {
-	const variants = [
-		["Code", `${HOME}/Library/Application Support/Code/User/globalStorage/state.vscdb`],
-		["Code - Insiders", `${HOME}/Library/Application Support/Code - Insiders/User/globalStorage/state.vscdb`],
-		["VSCodium", `${HOME}/Library/Application Support/VSCodium/User/globalStorage/state.vscdb`],
-	];
-
-	for (const [name, path] of variants) {
+	for (const [name, path] of VS_CODE_VARIANTS) {
 		if (fileExists(path)) {
 			return { dbPath: path, buildName: name };
 		}
@@ -109,7 +111,8 @@ function findVSCodeDB() {
 }
 
 /**
- * Reads recent entries from VS Code SQLite database
+ * Reads recent entries from VS Code SQLite database.
+ * Optimized: Single try-catch block, optional chaining.
  */
 function getRecentEntries(dbPath) {
 	const query = `SELECT value FROM ItemTable WHERE key = 'history.recentlyOpenedPathsList';`;
@@ -119,7 +122,7 @@ function getRecentEntries(dbPath) {
 
 	try {
 		const data = JSON.parse(result.trim());
-		return data.entries || [];
+		return data?.entries || [];
 	} catch (e) {
 		return [];
 	}
@@ -157,6 +160,20 @@ function extractEntryInfo(entry) {
 	}
 
 	return null;
+}
+
+/**
+ * Creates error/info item for Alfred.
+ * DRY: Extracted common pattern for error messages.
+ * @param {string} title - Title of the message.
+ * @param {string} subtitle - Subtitle of the message.
+ * @param {string} iconPath - Optional icon path.
+ * @returns {object} Alfred response object.
+ */
+function createInfoItem(title, subtitle, iconPath = "icon.png") {
+	return {
+		items: [{ title, subtitle, valid: false, icon: { path: iconPath } }]
+	};
 }
 
 /**
@@ -203,47 +220,41 @@ function parseEntry(entry, branchMap = {}) {
 }
 
 /**
- * Main entry point for Alfred Script Filter
+ * Main entry point for Alfred Script Filter.
+ * Optimized: Uses createInfoItem, cleaner error handling.
  */
 function run() {
     const vsCode = findVSCodeDB();
 
     if (!vsCode) {
-        return JSON.stringify({
-            items: [{
-                title: "VS Code not found",
-                subtitle: "Could not locate VS Code database",
-                valid: false,
-                icon: { path: "icon.png" },
-            }],
-        });
+        return JSON.stringify(createInfoItem(
+            "VS Code not found",
+            "Could not locate VS Code database"
+        ));
     }
 
     const entries = getRecentEntries(vsCode.dbPath);
 
-    if (!entries || entries.length === 0) {
-        return JSON.stringify({
-            items: [{
-                title: "No recent projects",
-                subtitle: "Open some projects in VS Code first",
-                valid: false,
-                icon: { path: "icon.png" },
-            }],
-        });
+    if (!entries.length) {
+        return JSON.stringify(createInfoItem(
+            "No recent projects",
+            "Open some projects in VS Code first"
+        ));
     }
 
     // Extract folder paths for parallel git branch fetching
     const folderPaths = entries
         .map(extractEntryInfo)
-        .filter(info => info && info.type === "folder" && fileExists(info.path))
+        .filter(info => info?.type === "folder" && fileExists(info.path))
         .map(info => info.path);
 
     // Fetch all git branches in parallel (single shell call)
     const branchMap = getGitBranchesParallel(folderPaths);
 
+    // Parse entries and filter out null values
     const items = entries
         .map(entry => parseEntry(entry, branchMap))
-        .filter((item) => item !== null);
+        .filter(item => item !== null);
 
     return JSON.stringify({
         cache: { seconds: 5, loosereload: true },
