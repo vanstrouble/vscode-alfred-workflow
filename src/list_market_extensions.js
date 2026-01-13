@@ -133,7 +133,7 @@ function parseExtension(ext, installedIds) {
 		icon: { path: DEFAULT_ICON },
 		variables: { extension_name: ext.displayName },
 		mods: {
-			cmd: { subtitle: `Open in browser`, arg: MARKETPLACE_URL + id },
+			cmd: { subtitle: `⌘ Open in browser`, arg: MARKETPLACE_URL + id },
 		},
 	};
 }
@@ -168,7 +168,7 @@ function run(argv) {
 	const installedIds = getInstalledExtensions();
 
 	return JSON.stringify({
-		cache: { seconds: 60, loosereload: true },
+		cache: { seconds: 5, loosereload: true },
 		items: extensions.map(ext => parseExtension(ext, installedIds)),
 	});
 }
