@@ -34,7 +34,8 @@ function compactNumber(num) {
 /**
  * Reads installed extension IDs directly from VS Code extensions directories.
  * Optimized: Only reads directory names, extracts IDs with regex (no package.json parsing).
- * @returns {Set<string>} Set of installed extension IDs.
+ * Performance: O(n) with O(1) lookup using Set, case-insensitive comparison.
+ * @returns {Set<string>} Set of installed extension IDs (lowercase).
  */
 function getInstalledExtensions() {
 	try {
@@ -58,9 +59,9 @@ function getInstalledExtensions() {
 			const count = contents.count;
 			for (let i = 0; i < count; i++) {
 				const dirName = ObjC.unwrap(contents.objectAtIndex(i));
-				// Extract ID from directory name: "publisher.extension-version" -> "publisher.extension"
-			// Use lazy match to capture everything before the dash that precedes the version number
-			const match = dirName.match(/^(.+?)-\d/);
+				// Extract ID: "ms-python.python-2.0.1" -> "ms-python.python"
+				// Lazy match until dash + digit (version start)
+				const match = dirName.match(/^(.+?)-\d/);
 				if (match) ids.add(match[1].toLowerCase());
 			}
 		}
