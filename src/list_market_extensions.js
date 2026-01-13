@@ -12,9 +12,9 @@ const DEFAULT_ICON = "icon.png";
 
 // Consistent VS Code variants configuration
 const VS_CODE_VARIANTS = [
-    { name: "Code", ext: ".vscode" },
-    { name: "Code - Insiders", ext: ".vscode-insiders" },
-    { name: "VSCodium", ext: ".vscode-oss" },
+    { name: "Code", ext: ".vscode", path: "/Applications/Visual Studio Code.app", scheme: "vscode" },
+    { name: "Code - Insiders", ext: ".vscode-insiders", path: "/Applications/Visual Studio Code - Insiders.app", scheme: "vscode-insiders" },
+    { name: "VSCodium", ext: ".vscode-oss", path: "/Applications/VSCodium.app", scheme: "vscodium" },
 ];
 
 // API Flags (combined for performance)
@@ -27,6 +27,14 @@ const API_FLAGS = 0x2 | 0x4 | 0x10 | 0x20 | 0x80 | 0x100 | 0x200; // Files, Cate
  */
 function fileExists(path) {
     return FILE_MANAGER.fileExistsAtPath(path);
+}
+
+/**
+ * Finds the first installed VS Code variant.
+ * @returns {{name: string, path: string, cli: string, scheme: string}|null}
+ */
+function findVSCodeVariant() {
+	return VS_CODE_VARIANTS.find(variant => fileExists(variant.path)) || null;
 }
 
 /**
@@ -114,7 +122,7 @@ function fetchExtensions(searchText) {
 /**
  * Parses extension to Alfred item
  */
-function parseExtension(ext, installedIds) {
+function parseExtension(ext, installedIds, vscodeVariant) {
 	const id = `${ext.publisher.publisherName}.${ext.extensionName}`;
 	const stats = ext.statistics?.find((s) => s.statisticName === "install");
 	const version = ext.versions?.[0]?.version || "";
@@ -129,6 +137,8 @@ function parseExtension(ext, installedIds) {
 		.filter(Boolean)
 		.join(" • ");
 
+	const vscodeUrl = vscodeVariant ? `${vscodeVariant.scheme}:extension/${id}` : MARKETPLACE_URL + id;
+
 	return {
 		uid: ext.extensionId,
 		title: ext.displayName,
@@ -141,7 +151,13 @@ function parseExtension(ext, installedIds) {
 		icon: { path: DEFAULT_ICON },
 		variables: { extension_name: ext.displayName },
 		mods: {
-			cmd: { subtitle: `⌘ Open in VS Code`, arg: id },
+			cmd: {
+				subtitle: `⌘ Open in VS Code`,
+				arg: id,
+				variables: {
+					vscode_url: vscodeUrl
+				}
+			},
 		},
 	};
 }
@@ -181,9 +197,10 @@ function run(argv) {
 	}
 
 	const installedIds = getInstalledExtensions();
+	const vscodeVariant = findVSCodeVariant();
 
 	return JSON.stringify({
 		cache: { seconds: 5, loosereload: true },
-		items: extensions.map((ext) => parseExtension(ext, installedIds)),
+		items: extensions.map((ext) => parseExtension(ext, installedIds, vscodeVariant)),
 	});
 }
