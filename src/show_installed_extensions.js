@@ -151,6 +151,30 @@ function getLocalExtensions(extensionsPath) {
 }
 
 /**
+ * Saves installed extension IDs to persistent cache file.
+ * @param {string[]} extensionIds - Array of extension IDs.
+ */
+function saveInstalledExtensionsCache(extensionIds) {
+    try {
+        const alfredCache = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("alfred_workflow_cache"));
+        if (!alfredCache) return;
+
+        const cacheFile = `${alfredCache}/installed_extensions.json`;
+
+        // Create cache directory if it doesn't exist
+        FILE_MANAGER.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(
+            alfredCache, true, $(), null
+        );
+
+        const cacheData = JSON.stringify({ ids: extensionIds, timestamp: Date.now() });
+        const nsString = $.NSString.alloc.initWithUTF8String(cacheData);
+        nsString.writeToFileAtomicallyEncodingError(cacheFile, true, $.NSUTF8StringEncoding, null);
+    } catch (e) {
+        // Silently fail - cache is optional
+    }
+}
+
+/**
  * Creates error/info item for Alfred.
  * DRY: Extracted common pattern for error messages.
  * @param {string} title - Title of the message.
@@ -195,8 +219,11 @@ function run() {
     // Sort alphabetically (case-insensitive)
     uniqueExtensions.sort((a, b) => a.title.localeCompare(b.title));
 
+    // Save installed extension IDs to persistent cache
+    saveInstalledExtensionsCache(uniqueExtensions.map(item => item.uid));
+
     return JSON.stringify({
-        cache: { seconds: 3600, loosereload: true },
+        cache: { seconds: 30, loosereload: true },
         items: uniqueExtensions
     });
 }

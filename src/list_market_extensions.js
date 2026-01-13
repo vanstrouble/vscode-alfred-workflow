@@ -32,6 +32,30 @@ function compactNumber(num) {
 }
 
 /**
+ * Reads installed extension IDs from cache file.
+ * @returns {Set<string>} Set of installed extension IDs.
+ */
+function getInstalledExtensions() {
+	try {
+		const alfredCache = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("alfred_workflow_cache"));
+		if (!alfredCache) return new Set();
+
+		const cacheFile = `${alfredCache}/installed_extensions.json`;
+
+		const fileManager = $.NSFileManager.defaultManager;
+		if (!fileManager.fileExistsAtPath(cacheFile)) return new Set();
+
+		const content = $.NSString.stringWithContentsOfFileEncodingError(cacheFile, $.NSUTF8StringEncoding, null);
+		if (!content) return new Set();
+
+		const data = JSON.parse(ObjC.unwrap(content));
+		return new Set(data.ids || []);
+	} catch (e) {
+		return new Set();
+	}
+}
+
+/**
  * Fetches extensions from VS Code Marketplace
  */
 function fetchExtensions(searchText) {
@@ -67,12 +91,14 @@ function fetchExtensions(searchText) {
 /**
  * Parses extension to Alfred item
  */
-function parseExtension(ext) {
+function parseExtension(ext, installedIds) {
 	const id = `${ext.publisher.publisherName}.${ext.extensionName}`;
 	const stats = ext.statistics?.find(s => s.statisticName === "install");
 	const version = ext.versions?.[0]?.version || "";
+	const isInstalled = installedIds.has(id);
 
 	const subtitle = [
+		isInstalled ? "✓ Installed" : null,
 		ext.publisher.displayName,
 		stats ? `↓ ${compactNumber(stats.value)}` : null,
 		version ? `v${version}` : null,
@@ -121,8 +147,10 @@ function run(argv) {
 		});
 	}
 
+	const installedIds = getInstalledExtensions();
+
 	return JSON.stringify({
 		cache: { seconds: 60, loosereload: true },
-		items: extensions.map(parseExtension),
+		items: extensions.map(ext => parseExtension(ext, installedIds)),
 	});
 }
