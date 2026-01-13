@@ -131,6 +131,7 @@ function parseExtension(ext, installedIds) {
 		text: { copy: id, largetype: ext.shortDescription || ext.displayName },
 		quicklookurl: MARKETPLACE_URL + id,
 		icon: { path: DEFAULT_ICON },
+		variables: { extension_name: ext.displayName },
 		mods: {
 			cmd: { subtitle: `Open in browser`, arg: MARKETPLACE_URL + id },
 		},

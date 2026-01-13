@@ -55,6 +55,33 @@ function runShell(command) {
 }
 
 /**
+ * Sends a notification using notificator.
+ * @param {string} title - The notification title.
+ * @param {string} message - The notification message.
+ * @param {string} [subtitle] - Optional subtitle.
+ * @param {string} [sound] - Optional sound name (default: "default").
+ */
+function sendNotification(title, message, subtitle, sound) {
+	const notificatorPath = "./notificator";
+
+	// Escape single quotes in strings to prevent shell injection
+	const escapeQuotes = (str) => str.replace(/'/g, "'\\''");
+
+	let command = `'${notificatorPath}' --message '${escapeQuotes(message)}' --title '${escapeQuotes(title)}'`;
+
+	if (subtitle) {
+		command += ` --subtitle '${escapeQuotes(subtitle)}'`;
+	}
+
+	// Add sound notification only if sound parameter is provided
+	if (sound) {
+		command += ` --sound '${sound}'`;
+	}
+
+	runShell(command);
+}
+
+/**
  * Main entry point for the JXA script.
  * @param {string[]} argv - Arguments passed from the Alfred Run Script action.
  */
@@ -66,10 +93,18 @@ function run(argv) {
 		return "No extension ID provided.";
 	}
 
+	// Get the extension name from environment variable if available
+	const env = $.NSProcessInfo.processInfo.environment;
+	const extensionName = ObjC.unwrap(env.objectForKey("extension_name")) || extensionId;
+
 	const vscode = findVSCodeVariant();
 	if (!vscode) {
+		sendNotification("Visual Studio Code Not Found", "Application not detected on this system", "Please install VS Code first", "default");
 		return "VS Code application not found.";
 	}
+
+	// Send "Installing..." notification
+	sendNotification("Installing Extension", extensionName);
 
 	// The `code` command might not be in the default PATH for shell scripts
 	// running via osascript. We'll use the full path to the binary inside the app bundle.
@@ -82,10 +117,12 @@ function run(argv) {
 	const result = runShell(command);
 
 	if (result === null) {
+		sendNotification("Extension Installation Failed", extensionName, null, "default");
 		return `Failed to install extension: ${extensionId}`;
 	}
 
+	sendNotification("Extension Installed Successfully", extensionName, null, "default");
+
 	// The command outputs a success message on stdout. We can return it.
-	// Example: "Extension 'dracula-theme.theme-dracula' v2.25.1 was successfully installed."
 	return result;
 }
