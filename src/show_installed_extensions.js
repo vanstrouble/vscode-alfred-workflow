@@ -6,9 +6,9 @@ const HOME = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("H
 
 // VS Code variants configuration (DRY principle)
 const VS_CODE_VARIANTS = [
-    { name: "Code", app: "/Applications/Visual Studio Code.app", ext: ".vscode" },
-    { name: "Code - Insiders", app: "/Applications/Visual Studio Code - Insiders.app", ext: ".vscode-insiders" },
-    { name: "VSCodium", app: "/Applications/VSCodium.app", ext: ".vscode-oss" },
+    { name: "Code", app: "/Applications/Visual Studio Code.app", ext: ".vscode", scheme: "vscode" },
+    { name: "Code - Insiders", app: "/Applications/Visual Studio Code - Insiders.app", ext: ".vscode-insiders", scheme: "vscode-insiders" },
+    { name: "VSCodium", app: "/Applications/VSCodium.app", ext: ".vscode-oss", scheme: "vscodium" },
 ];
 
 // Icon search locations (DRY principle)
@@ -26,11 +26,11 @@ function fileExists(path) {
 /**
  * Finds installed VS Code variants and their extension directories.
  * Optimized: Only checks paths once, constructs result directly.
- * @returns {{name: string, extensionsPath: string}[]}
+ * @returns {{name: string, extensionsPath: string, scheme: string}[]}
  */
 function findVSCodeVariants() {
     return VS_CODE_VARIANTS
-        .map(v => ({ name: v.name, extensionsPath: `${HOME}/${v.ext}/extensions` }))
+        .map(v => ({ ...v, extensionsPath: `${HOME}/${v.ext}/extensions` }))
         .filter(v => fileExists(v.extensionsPath));
 }
 
@@ -96,15 +96,18 @@ function findExtensionIcon(extPath, manifest) {
  * @param {string} description - Description of the extension.
  * @param {string} publisher - Publisher name.
  * @param {object} icon - Icon object.
+ * @param {object} variant - The VS Code variant this extension belongs to.
  * @returns {object} Alfred item object.
  */
-function createAlfredItem(id, displayName, description, publisher, icon) {
+function createAlfredItem(id, displayName, description, publisher, icon, variant) {
+    const vscodeUrl = `${variant.scheme}:extension/${id}`;
     return {
         uid: id,
         title: displayName,
         subtitle: description,
         arg: id,
         autocomplete: displayName,
+        variables: { vscode_url: vscodeUrl },
         match: `${displayName} ${publisher} ${id}`,
         icon: icon,
         mods: {
@@ -120,10 +123,11 @@ function createAlfredItem(id, displayName, description, publisher, icon) {
 /**
  * Gets locally installed extensions.
  * Optimized: Streamlined logic, reduced nesting, better error handling.
- * @param {string} extensionsPath - Path to the extensions directory.
+ * @param {object} variant - The VS Code variant object.
  * @returns {object[]}
  */
-function getLocalExtensions(extensionsPath) {
+function getLocalExtensions(variant) {
+    const extensionsPath = variant.extensionsPath;
     if (!fileExists(extensionsPath)) return [];
 
     const contents = FILE_MANAGER.contentsOfDirectoryAtPathError(extensionsPath, null);
@@ -144,7 +148,7 @@ function getLocalExtensions(extensionsPath) {
         const description = resolveLocalization(manifest.description, extPath) || "";
         const icon = findExtensionIcon(extPath, manifest);
 
-        extensions.push(createAlfredItem(id, displayName, description, manifest.publisher, icon));
+        extensions.push(createAlfredItem(id, displayName, description, manifest.publisher, icon, variant));
     }
 
     return extensions;
@@ -178,7 +182,7 @@ function run() {
     }
 
     // Collect all extensions from all variants
-    const allExtensions = variants.flatMap(v => getLocalExtensions(v.extensionsPath));
+    const allExtensions = variants.flatMap(v => getLocalExtensions(v));
 
     if (allExtensions.length === 0) {
         return JSON.stringify(createInfoItem(
