@@ -3,14 +3,31 @@ ObjC.import("Foundation");
 const app = Application.currentApplication();
 app.includeStandardAdditions = true;
 
+const FILE_MANAGER = $.NSFileManager.defaultManager;
+const HOME = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("HOME"));
 const MAX_RESULTS = 20;
-const API_URL =
-	"https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery?api-version=3.0-preview.1";
+const API_URL = "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery?api-version=3.0-preview.1";
 const MARKETPLACE_URL = "https://marketplace.visualstudio.com/items?itemName=";
 const DEFAULT_ICON = "icon.png";
 
+// Consistent VS Code variants configuration
+const VS_CODE_VARIANTS = [
+    { name: "Code", ext: ".vscode" },
+    { name: "Code - Insiders", ext: ".vscode-insiders" },
+    { name: "VSCodium", ext: ".vscode-oss" },
+];
+
 // API Flags (combined for performance)
 const API_FLAGS = 0x2 | 0x4 | 0x10 | 0x20 | 0x80 | 0x100 | 0x200; // Files, Categories, VersionProps, ExcludeNonValidated, AssetUri, Statistics, LatestOnly
+
+/**
+ * Checks if a file or directory exists.
+ * @param {string} path - The path to check.
+ * @returns {boolean}
+ */
+function fileExists(path) {
+    return FILE_MANAGER.fileExistsAtPath(path);
+}
 
 /**
  * Executes a shell command
@@ -33,49 +50,30 @@ function compactNumber(num) {
 }
 
 /**
- * Reads installed extension IDs directly from VS Code extensions directories.
- * Optimized: Only reads directory names, extracts IDs with regex (no package.json parsing).
- * Performance: O(n) with O(1) lookup using Set, case-insensitive comparison.
- * @returns {Set<string>} Set of installed extension IDs (lowercase).
+ * Reads installed extension IDs from all found VS Code variants.
+ * @returns {Set<string>} A set of installed extension IDs (lowercase).
  */
 function getInstalledExtensions() {
-	try {
-		const ids = new Set();
-		const HOME = ObjC.unwrap(
-			$.NSProcessInfo.processInfo.environment.objectForKey("HOME")
-		);
-		if (!HOME) return ids;
+    const ids = new Set();
+    if (!HOME) return ids;
 
-		const fileManager = $.NSFileManager.defaultManager;
-		const paths = [
-			`${HOME}/.vscode/extensions`,
-			`${HOME}/.vscode-insiders/extensions`,
-			`${HOME}/.vscode-oss/extensions`,
-		];
+    const variants = VS_CODE_VARIANTS
+        .map(v => `${HOME}/${v.ext}/extensions`)
+        .filter(path => fileExists(path));
 
-		for (const path of paths) {
-			if (!fileManager.fileExistsAtPath(path)) continue;
+    for (const path of variants) {
+        const contents = FILE_MANAGER.contentsOfDirectoryAtPathError(path, null);
+        if (!contents) continue;
 
-			const contents = fileManager.contentsOfDirectoryAtPathError(
-				path,
-				null
-			);
-			if (!contents) continue;
-
-			const count = contents.count;
-			for (let i = 0; i < count; i++) {
-				const dirName = ObjC.unwrap(contents.objectAtIndex(i));
-				// Extract ID: "ms-python.python-2.0.1" -> "ms-python.python"
-				// Lazy match until dash + digit (version start)
-				const match = dirName.match(/^(.+?)-\d/);
-				if (match) ids.add(match[1].toLowerCase());
-			}
-		}
-
-		return ids;
-	} catch (e) {
-		return new Set();
-	}
+        const count = contents.count;
+        for (let i = 0; i < count; i++) {
+            const dirName = ObjC.unwrap(contents.objectAtIndex(i));
+            // Extract ID: "ms-python.python-2.0.1" -> "ms-python.python"
+            const match = dirName.match(/^(.+?)-\d/);
+            if (match) ids.add(match[1].toLowerCase());
+        }
+    }
+    return ids;
 }
 
 /**

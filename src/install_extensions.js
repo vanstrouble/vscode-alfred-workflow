@@ -10,41 +10,36 @@ const FILE_MANAGER = $.NSFileManager.defaultManager;
 const app = Application.currentApplication();
 app.includeStandardAdditions = true;
 
+// Consistent VS Code variants configuration
+const VS_CODE_VARIANTS = [
+	{
+		name: "Visual Studio Code",
+		path: "/Applications/Visual Studio Code.app",
+		cli: "code",
+	},
+	{
+		name: "Visual Studio Code - Insiders",
+		path: "/Applications/Visual Studio Code - Insiders.app",
+		cli: "code-insiders",
+	},
+	{ name: "VSCodium", path: "/Applications/VSCodium.app", cli: "codium" },
+];
+
 /**
- * Checks if an application exists at the given path.
- * @param {string} path - The full path to the application bundle.
- * @returns {boolean} - True if the file exists, false otherwise.
+ * Checks if a file or directory exists.
+ * @param {string} path - The path to check.
+ * @returns {boolean}
  */
-function appExists(path) {
+function fileExists(path) {
 	return FILE_MANAGER.fileExistsAtPath(path);
 }
 
 /**
- * Finds which VS Code variant is installed on the system.
- * It checks for "Visual Studio Code", "Visual Studio Code - Insiders", and "VSCodium".
- * @returns {{name: string, path: string, cli: string}|null} An object with variant details or null if none are found.
+ * Finds the first installed VS Code variant.
+ * @returns {{name: string, path: string, cli: string}|null}
  */
 function findVSCodeVariant() {
-	const variants = [
-		{
-			name: "Visual Studio Code",
-			path: "/Applications/Visual Studio Code.app",
-			cli: "code",
-		},
-		{
-			name: "Visual Studio Code - Insiders",
-			path: "/Applications/Visual Studio Code - Insiders.app",
-			cli: "code-insiders",
-		},
-		{ name: "VSCodium", path: "/Applications/VSCodium.app", cli: "codium" },
-	];
-
-	for (const variant of variants) {
-		if (appExists(variant.path)) {
-			return variant;
-		}
-	}
-	return null;
+	return VS_CODE_VARIANTS.find(variant => fileExists(variant.path)) || null;
 }
 
 /**
@@ -83,12 +78,8 @@ function run(argv) {
 		return "Application not detected on this system. Please install VS Code first.";
 	}
 
-	// The `code` command might not be in the default PATH for shell scripts
-	// running via osascript. We'll use the full path to the binary inside the app bundle.
+	// Use the full path to the binary inside the app bundle.
 	const cliPath = `${vscode.path}/Contents/Resources/app/bin/${vscode.cli}`;
-
-	// Command to install the extension and wait for it to finish.
-	// This will also open VS Code if it's not already running.
 	const command = `'${cliPath}' --install-extension '${extensionId}' --force`;
 
 	const result = runShell(command);
