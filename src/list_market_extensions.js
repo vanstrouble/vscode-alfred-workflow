@@ -32,24 +32,40 @@ function compactNumber(num) {
 }
 
 /**
- * Reads installed extension IDs from cache file.
+ * Reads installed extension IDs directly from VS Code extensions directories.
+ * Optimized: Only reads directory names, extracts IDs with regex (no package.json parsing).
  * @returns {Set<string>} Set of installed extension IDs.
  */
 function getInstalledExtensions() {
 	try {
-		const alfredCache = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("alfred_workflow_cache"));
-		if (!alfredCache) return new Set();
-
-		const cacheFile = `${alfredCache}/installed_extensions.json`;
+		const ids = new Set();
+		const HOME = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("HOME"));
+		if (!HOME) return ids;
 
 		const fileManager = $.NSFileManager.defaultManager;
-		if (!fileManager.fileExistsAtPath(cacheFile)) return new Set();
+		const paths = [
+			`${HOME}/.vscode/extensions`,
+			`${HOME}/.vscode-insiders/extensions`,
+			`${HOME}/.vscode-oss/extensions`
+		];
 
-		const content = $.NSString.stringWithContentsOfFileEncodingError(cacheFile, $.NSUTF8StringEncoding, null);
-		if (!content) return new Set();
+		for (const path of paths) {
+			if (!fileManager.fileExistsAtPath(path)) continue;
 
-		const data = JSON.parse(ObjC.unwrap(content));
-		return new Set(data.ids || []);
+			const contents = fileManager.contentsOfDirectoryAtPathError(path, null);
+			if (!contents) continue;
+
+			const count = contents.count;
+			for (let i = 0; i < count; i++) {
+				const dirName = ObjC.unwrap(contents.objectAtIndex(i));
+				// Extract ID from directory name: "publisher.extension-version" -> "publisher.extension"
+			// Use lazy match to capture everything before the dash that precedes the version number
+			const match = dirName.match(/^(.+?)-\d/);
+				if (match) ids.add(match[1].toLowerCase());
+			}
+		}
+
+		return ids;
 	} catch (e) {
 		return new Set();
 	}
@@ -95,7 +111,7 @@ function parseExtension(ext, installedIds) {
 	const id = `${ext.publisher.publisherName}.${ext.extensionName}`;
 	const stats = ext.statistics?.find(s => s.statisticName === "install");
 	const version = ext.versions?.[0]?.version || "";
-	const isInstalled = installedIds.has(id);
+	const isInstalled = installedIds.has(id.toLowerCase());
 
 	const subtitle = [
 		isInstalled ? "✓ Installed" : null,
