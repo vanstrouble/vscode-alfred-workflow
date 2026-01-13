@@ -4,7 +4,8 @@ const app = Application.currentApplication();
 app.includeStandardAdditions = true;
 
 const MAX_RESULTS = 20;
-const API_URL = "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery?api-version=3.0-preview.1";
+const API_URL =
+	"https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery?api-version=3.0-preview.1";
 const MARKETPLACE_URL = "https://marketplace.visualstudio.com/items?itemName=";
 const DEFAULT_ICON = "icon.png";
 
@@ -40,20 +41,25 @@ function compactNumber(num) {
 function getInstalledExtensions() {
 	try {
 		const ids = new Set();
-		const HOME = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey("HOME"));
+		const HOME = ObjC.unwrap(
+			$.NSProcessInfo.processInfo.environment.objectForKey("HOME")
+		);
 		if (!HOME) return ids;
 
 		const fileManager = $.NSFileManager.defaultManager;
 		const paths = [
 			`${HOME}/.vscode/extensions`,
 			`${HOME}/.vscode-insiders/extensions`,
-			`${HOME}/.vscode-oss/extensions`
+			`${HOME}/.vscode-oss/extensions`,
 		];
 
 		for (const path of paths) {
 			if (!fileManager.fileExistsAtPath(path)) continue;
 
-			const contents = fileManager.contentsOfDirectoryAtPathError(path, null);
+			const contents = fileManager.contentsOfDirectoryAtPathError(
+				path,
+				null
+			);
 			if (!contents) continue;
 
 			const count = contents.count;
@@ -77,17 +83,19 @@ function getInstalledExtensions() {
  */
 function fetchExtensions(searchText) {
 	const body = JSON.stringify({
-		filters: [{
-			criteria: [
-				{ filterType: 8, value: "Microsoft.VisualStudio.Code" },
-				{ filterType: 10, value: searchText },
-				{ filterType: 12, value: "4096" },
-			],
-			pageNumber: 1,
-			pageSize: MAX_RESULTS,
-			sortBy: 0,
-			sortOrder: 0,
-		}],
+		filters: [
+			{
+				criteria: [
+					{ filterType: 8, value: "Microsoft.VisualStudio.Code" },
+					{ filterType: 10, value: searchText },
+					{ filterType: 12, value: "4096" },
+				],
+				pageNumber: 1,
+				pageSize: MAX_RESULTS,
+				sortBy: 0,
+				sortOrder: 0,
+			},
+		],
 		assetTypes: [],
 		flags: API_FLAGS,
 	});
@@ -110,7 +118,7 @@ function fetchExtensions(searchText) {
  */
 function parseExtension(ext, installedIds) {
 	const id = `${ext.publisher.publisherName}.${ext.extensionName}`;
-	const stats = ext.statistics?.find(s => s.statisticName === "install");
+	const stats = ext.statistics?.find((s) => s.statisticName === "install");
 	const version = ext.versions?.[0]?.version || "";
 	const isInstalled = installedIds.has(id.toLowerCase());
 
@@ -119,7 +127,9 @@ function parseExtension(ext, installedIds) {
 		ext.publisher.displayName,
 		stats ? `↓ ${compactNumber(stats.value)}` : null,
 		version ? `v${version}` : null,
-	].filter(Boolean).join(" • ");
+	]
+		.filter(Boolean)
+		.join(" • ");
 
 	return {
 		uid: ext.extensionId,
@@ -133,7 +143,7 @@ function parseExtension(ext, installedIds) {
 		icon: { path: DEFAULT_ICON },
 		variables: { extension_name: ext.displayName },
 		mods: {
-			cmd: { subtitle: `⌘ Open in browser`, arg: MARKETPLACE_URL + id },
+			cmd: { subtitle: `⌘ Open in VS Code`, arg: id },
 		},
 	};
 }
@@ -153,7 +163,12 @@ function run(argv) {
 
 	if (!query) {
 		return JSON.stringify({
-			items: [simpleItem("Search VS Code Extensions", "Type to search the Marketplace")],
+			items: [
+				simpleItem(
+					"Search VS Code Extensions",
+					"Type to search the Marketplace"
+				),
+			],
 		});
 	}
 
@@ -161,7 +176,9 @@ function run(argv) {
 
 	if (!extensions.length) {
 		return JSON.stringify({
-			items: [simpleItem("No extensions found", `No results for "${query}"`)],
+			items: [
+				simpleItem("No extensions found", `No results for "${query}"`),
+			],
 		});
 	}
 
@@ -169,6 +186,6 @@ function run(argv) {
 
 	return JSON.stringify({
 		cache: { seconds: 5, loosereload: true },
-		items: extensions.map(ext => parseExtension(ext, installedIds)),
+		items: extensions.map((ext) => parseExtension(ext, installedIds)),
 	});
 }
