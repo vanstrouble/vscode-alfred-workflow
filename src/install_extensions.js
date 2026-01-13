@@ -26,8 +26,16 @@ function appExists(path) {
  */
 function findVSCodeVariant() {
 	const variants = [
-		{ name: "Visual Studio Code", path: "/Applications/Visual Studio Code.app", cli: "code" },
-		{ name: "Visual Studio Code - Insiders", path: "/Applications/Visual Studio Code - Insiders.app", cli: "code-insiders" },
+		{
+			name: "Visual Studio Code",
+			path: "/Applications/Visual Studio Code.app",
+			cli: "code",
+		},
+		{
+			name: "Visual Studio Code - Insiders",
+			path: "/Applications/Visual Studio Code - Insiders.app",
+			cli: "code-insiders",
+		},
 		{ name: "VSCodium", path: "/Applications/VSCodium.app", cli: "codium" },
 	];
 
