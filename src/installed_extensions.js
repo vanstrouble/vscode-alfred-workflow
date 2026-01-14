@@ -151,14 +151,10 @@ function createAlfredItem(
 		match: `${displayName} ${publisher} ${id}`,
 		icon: icon,
 		mods: {
-			cmd: {
-				subtitle: `⌘ Copy Extension ID: ${id}`,
-				arg: id,
-			},
 			ctrl: {
 				subtitle: `⌃ Uninstall "${displayName}"`,
 				arg: id,
-				variables: { action: "uninstall" },
+				variables: { action: "uninstall", extension_name: displayName },
 			},
 		},
 	};
