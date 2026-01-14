@@ -153,10 +153,7 @@ function parseExtension(ext, installedIds, vscodeVariant) {
 		mods: {
 			cmd: {
 				subtitle: `⌘ Open in VS Code`,
-				arg: id,
-				variables: {
-					vscode_url: vscodeUrl
-				}
+				arg: vscodeUrl,
 			},
 		},
 	};

@@ -105,12 +105,15 @@ function createAlfredItem(id, displayName, description, publisher, icon, variant
         uid: id,
         title: displayName,
         subtitle: description,
-        arg: id,
+        arg: vscodeUrl,
         autocomplete: displayName,
-        variables: { vscode_url: vscodeUrl },
         match: `${displayName} ${publisher} ${id}`,
         icon: icon,
         mods: {
+            cmd: {
+                subtitle: `⌘ Copy Extension ID: ${id}`,
+                arg: id,
+            },
             ctrl: {
                 subtitle: `⌃ Uninstall "${displayName}"`,
                 arg: id,
