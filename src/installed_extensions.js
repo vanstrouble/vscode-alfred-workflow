@@ -161,6 +161,18 @@ function createAlfredItem(
 }
 
 /**
+ * Gets the set of obsolete (pending removal) extension folder names.
+ * VS Code marks uninstalled extensions in a .obsolete JSON file.
+ * @param {string} extensionsPath - Path to the extensions directory.
+ * @returns {Set<string>} Set of obsolete folder names.
+ */
+function getObsoleteExtensions(extensionsPath) {
+	const obsoleteFile = `${extensionsPath}/.obsolete`;
+	const obsoleteData = readJson(obsoleteFile);
+	return obsoleteData ? new Set(Object.keys(obsoleteData)) : new Set();
+}
+
+/**
  * Gets locally installed extensions.
  * Optimized: Streamlined logic, reduced nesting, better error handling.
  * @param {object} variant - The VS Code variant object.
@@ -176,11 +188,18 @@ function getLocalExtensions(variant) {
 	);
 	if (!contents) return [];
 
+	// Get obsolete extensions to filter them out
+	const obsolete = getObsoleteExtensions(extensionsPath);
+
 	const extensions = [];
 	const count = contents.count;
 
 	for (let i = 0; i < count; i++) {
 		const dirName = ObjC.unwrap(contents.objectAtIndex(i));
+
+		// Skip obsolete (uninstalled) extensions
+		if (obsolete.has(dirName)) continue;
+
 		const extPath = `${extensionsPath}/${dirName}`;
 		const manifest = readJson(`${extPath}/package.json`);
 
@@ -258,7 +277,7 @@ function run() {
 	uniqueExtensions.sort((a, b) => a.title.localeCompare(b.title));
 
 	return JSON.stringify({
-		cache: { seconds: 30, loosereload: true },
+		cache: { seconds: 5, loosereload: true },
 		items: uniqueExtensions,
 	});
 }

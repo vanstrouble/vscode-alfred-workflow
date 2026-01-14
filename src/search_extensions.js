@@ -58,6 +58,36 @@ function compactNumber(num) {
 }
 
 /**
+ * Reads and parses a JSON file.
+ * @param {string} path - Path to the JSON file.
+ * @returns {object|null}
+ */
+function readJson(path) {
+	try {
+		const content = $.NSString.stringWithContentsOfFileEncodingError(
+			path,
+			$.NSUTF8StringEncoding,
+			null
+		);
+		return content ? JSON.parse(ObjC.unwrap(content)) : null;
+	} catch (e) {
+		return null;
+	}
+}
+
+/**
+ * Gets the set of obsolete (pending removal) extension folder names.
+ * VS Code marks uninstalled extensions in a .obsolete JSON file.
+ * @param {string} extensionsPath - Path to the extensions directory.
+ * @returns {Set<string>} Set of obsolete folder names.
+ */
+function getObsoleteExtensions(extensionsPath) {
+	const obsoleteFile = `${extensionsPath}/.obsolete`;
+	const obsoleteData = readJson(obsoleteFile);
+	return obsoleteData ? new Set(Object.keys(obsoleteData)) : new Set();
+}
+
+/**
  * Reads installed extension IDs from all found VS Code variants.
  * @returns {Set<string>} A set of installed extension IDs (lowercase).
  */
@@ -65,17 +95,24 @@ function getInstalledExtensions() {
     const ids = new Set();
     if (!HOME) return ids;
 
-    const variants = VS_CODE_VARIANTS
+    const variantPaths = VS_CODE_VARIANTS
         .map(v => `${HOME}/${v.ext}/extensions`)
         .filter(path => fileExists(path));
 
-    for (const path of variants) {
-        const contents = FILE_MANAGER.contentsOfDirectoryAtPathError(path, null);
+    for (const extPath of variantPaths) {
+        // Get obsolete extensions to filter them out
+        const obsolete = getObsoleteExtensions(extPath);
+
+        const contents = FILE_MANAGER.contentsOfDirectoryAtPathError(extPath, null);
         if (!contents) continue;
 
         const count = contents.count;
         for (let i = 0; i < count; i++) {
             const dirName = ObjC.unwrap(contents.objectAtIndex(i));
+
+            // Skip obsolete (uninstalled) extensions
+            if (obsolete.has(dirName)) continue;
+
             // Extract ID: "ms-python.python-2.0.1" -> "ms-python.python"
             const match = dirName.match(/^(.+?)-\d/);
             if (match) ids.add(match[1].toLowerCase());
