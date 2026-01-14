@@ -33,14 +33,6 @@ const VS_CODE_VARIANTS = [
 	},
 ];
 
-// Icon search locations (DRY principle)
-const ICON_LOCATIONS = [
-	"icon.png",
-	"images/icon.png",
-	"resources/icon.png",
-	"icon.svg",
-];
-
 /**
  * Checks if a file or directory exists.
  * @param {string} path - The path to check.
@@ -100,25 +92,17 @@ function resolveLocalization(value, extPath) {
 }
 
 /**
- * Finds the icon for an extension.
- * Optimized: Direct manifest check, then loop through common locations.
+ * Gets the icon path for an extension.
+ * Optimized: Trust manifest.icon if present, otherwise use default.
  * @param {string} extPath - Path to the extension directory.
  * @param {object} manifest - The package.json manifest.
  * @returns {object} Icon object for Alfred.
  */
 function findExtensionIcon(extPath, manifest) {
-	// Check manifest-specified icon first
+	// Trust manifest-specified icon (VS Code validates this)
 	if (manifest.icon) {
-		const manifestIcon = `${extPath}/${manifest.icon}`;
-		if (fileExists(manifestIcon)) return { path: manifestIcon };
+		return { path: `${extPath}/${manifest.icon}` };
 	}
-
-	// Check common locations
-	for (const loc of ICON_LOCATIONS) {
-		const iconPath = `${extPath}/${loc}`;
-		if (fileExists(iconPath)) return { path: iconPath };
-	}
-
 	return { path: "icon.png" };
 }
 
