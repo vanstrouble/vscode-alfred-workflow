@@ -207,13 +207,11 @@ function parseEntry(entry, branchMap = {}) {
         mods: {
             ctrl: {
                 subtitle: "⌃ Remove from recent projects",
-                arg: path,
-                variables: { action: "0" },
+                arg: `remove:${path}`,
             },
             "ctrl+shift": {
                 subtitle: "⌃⇧ Remove all recent projects",
-                arg: "REMOVE_ALL",
-                variables: { action: "1" },
+                arg: "remove:all",
             },
         },
     };

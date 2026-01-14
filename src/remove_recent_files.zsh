@@ -19,13 +19,18 @@ if [[ -z "${db_path}" ]]; then
     exit 1
 fi
 
-# Variables from Alfred
-action="${action}"            # 0=remove single, 1=remove all (from mods.variables)
-path_to_remove="${1}"         # Path del item a remover (from arg)
+# Argument from Alfred (format: "remove:path" or "remove:all")
+arg="${1}"
 
-case "${action}" in
-    0)  # Remove single entry - SQL directo
-        /usr/bin/sqlite3 "${db_path}" <<EOF
+# Extract action from argument prefix
+if [[ "${arg}" == "remove:all" ]]; then
+    # Remove all entries
+    /usr/bin/sqlite3 "${db_path}" \
+        "UPDATE ItemTable SET value = '{\"entries\":[]}' WHERE key = 'history.recentlyOpenedPathsList';"
+else
+    # Remove single entry - extract path after "remove:" prefix
+    path_to_remove="${arg#remove:}"
+    /usr/bin/sqlite3 "${db_path}" <<EOF
 UPDATE ItemTable
 SET value = (
     SELECT JSON_OBJECT(
@@ -46,11 +51,6 @@ SET value = (
 )
 WHERE key = 'history.recentlyOpenedPathsList';
 EOF
-        ;;
-    1)  # Remove all - SQL super simple
-        /usr/bin/sqlite3 "${db_path}" \
-            "UPDATE ItemTable SET value = '{\"entries\":[]}' WHERE key = 'history.recentlyOpenedPathsList';"
-        ;;
-esac
+fi
 
 echo "Updated recent projects"
