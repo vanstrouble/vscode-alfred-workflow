@@ -1,6 +1,6 @@
 # <img src="images/icon.png" alt="Visual Studio Code icon" align="center" width="45"/> Visual Studio Code | Alfred Workflow
 
-Control Visual Studio Code directly from Alfred. Jump to your recent projects in seconds, open any file or folder, search and manage extensions, and open new windows, all without taking your hands off the keyboard.
+Control Visual Studio Code directly from Alfred. Open windows, access recent projects and files, search files and folders, and manage extensions.
 
 **Supports:** Visual Studio Code, VS Code Insiders, and VSCodium.
 
@@ -9,6 +9,14 @@ Control Visual Studio Code directly from Alfred. Jump to your recent projects in
 - Download it directly [from GitHub here](https://github.com/vanstrouble/vscode-alfred-workflow/releases/latest).
 
 ## Usage
+
+### New VS Code window (code)
+
+<img src="images/code.png" alt="Alfred new VS Code window" width="570"/>
+
+Opens a fresh VS Code window, ready for a new project or quick edits.
+
+- **Keyword:** `code`
 
 ### Recent projects and files (coder)
 
@@ -45,7 +53,7 @@ Search for any file or folder on your Mac and open it directly in VS Code.
 
 <img src="images/codep.png" alt="Alfred open path" width="570"/>
 
-Open any folder in VS Code by typing its path. If you don't provide a path, the current Finder window will be opened in VS Code automatically.
+Open any folder in VS Code by typing its path. If you don't provide a path, the current Finder window will be opened in VS Code automatically. This action is also available via **Universal Actions**.
 
 - **Keyword:** `codep [path]`
 
@@ -55,14 +63,6 @@ Open any folder in VS Code by typing its path. If you don't provide a path, the 
 |------------------------------------------------------|--------------------------------------------------|
 | `codep`                                   | Opens the frontmost Finder window in VS Code.    |
 | `codep ~/Projects/my-folder`                | Opens the specified folder in VS Code.           |
-
-### New VS Code window (code)
-
-<img src="images/code.png" alt="Alfred new VS Code window" width="570"/>
-
-Opens a fresh VS Code window, ready for a new project or quick edits.
-
-- **Keyword:** `code`
 
 ### Search extensions (codes)
 
@@ -98,4 +98,4 @@ You can customize the keywords for each command directly in Alfred's workflow se
 
 ## Acknowledgments
 
-This workflow was built upon the foundation of [Alex Chan's](https://github.com/alexchantastic/alfred-open-with-vscode-workflow) original work, with significant enhancements and new features added to create a more complete VS Code experience from Alfred.
+This workflow is based on [Alex Chan’s original Alfred workflow for VS Code](https://github.com/alexchantastic/alfred-open-with-vscode-workflow), and has been extended with additional features and improvements.
