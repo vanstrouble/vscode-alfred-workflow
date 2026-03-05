@@ -6,6 +6,7 @@ Control Visual Studio Code directly from Alfred. Open windows, access recent pro
 
 ## Download
 
+- Available on the Alfred Gallery. [Get it here](https://alfred.app/workflows/vanstrouble/visual-studio-code/).
 - Download it directly [from GitHub here](https://github.com/vanstrouble/vscode-alfred-workflow/releases/latest).
 
 ## Usage
